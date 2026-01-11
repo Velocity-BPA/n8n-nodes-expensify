@@ -1,0 +1,32 @@
+# Source files
+nodes/
+credentials/
+
+# Config files
+.eslintrc.js
+.prettierrc
+tsconfig.json
+jest.config.js
+
+# Test files
+test/
+coverage/
+*.test.ts
+*.spec.ts
+
+# Development files
+.github/
+.vscode/
+.idea/
+
+# Scripts
+scripts/
+
+# Documentation source
+docs/
+
+# Misc
+*.tgz
+*.log
+.DS_Store
+Thumbs.db
