@@ -11,7 +11,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, NodeApiError } from 'n8n-workflow';
 
 import * as actions from './actions';
 
@@ -74,6 +74,10 @@ export class Expensify implements INodeType {
 						name: 'Tag Approver',
 						value: 'tagApprover',
 					},
+					{
+						name: 'Transaction',
+						value: 'transaction',
+					},
 				],
 				default: 'report',
 			},
@@ -103,6 +107,12 @@ export class Expensify implements INodeType {
 						action: 'Download a file',
 					},
 					{
+						name: 'Download Report',
+						value: 'downloadReport',
+						description: 'Download/export expense reports with various filters and formats',
+						action: 'Download report',
+					},
+					{
 						name: 'Export',
 						value: 'export',
 						description: 'Export reports by ID list',
@@ -119,6 +129,18 @@ export class Expensify implements INodeType {
 						value: 'exportByStatus',
 						description: 'Export reports filtered by status',
 						action: 'Export reports by status',
+					},
+					{
+						name: 'Get Report List',
+						value: 'getReportList',
+						description: 'Get list of reports matching criteria',
+						action: 'Get report list',
+					},
+					{
+						name: 'Update Report',
+						value: 'updateReport',
+						description: 'Update existing report details',
+						action: 'Update report',
 					},
 					{
 						name: 'Update Status',
@@ -154,6 +176,30 @@ export class Expensify implements INodeType {
 						description: 'Create multiple expenses in one request',
 						action: 'Create batch expenses',
 					},
+					{
+						name: 'Create Expense',
+						value: 'createExpense',
+						description: 'Create a new expense entry',
+						action: 'Create expense',
+					},
+					{
+						name: 'Update Expense',
+						value: 'updateExpense',
+						description: 'Modify existing expense details',
+						action: 'Update expense',
+					},
+					{
+						name: 'Delete Expense',
+						value: 'deleteExpense',
+						description: 'Remove an expense from system',
+						action: 'Delete expense',
+					},
+					{
+						name: 'Get Expense List',
+						value: 'getExpenseList',
+						description: 'Retrieve list of expenses with filters',
+						action: 'Get expense list',
+					},
 				],
 				default: 'create',
 			},
@@ -177,6 +223,12 @@ export class Expensify implements INodeType {
 						action: 'Create a policy',
 					},
 					{
+						name: 'Create Policy',
+						value: 'createPolicy',
+						description: 'Create new expense policy',
+						action: 'Create a policy',
+					},
+					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get detailed policy information',
@@ -189,10 +241,28 @@ export class Expensify implements INodeType {
 						action: 'Get many policies',
 					},
 					{
+						name: 'Get Policy List',
+						value: 'getPolicyList',
+						description: 'Retrieve list of policies',
+						action: 'Get policy list',
+					},
+					{
 						name: 'Update Categories',
 						value: 'updateCategories',
 						description: 'Add, update, or replace policy categories',
 						action: 'Update policy categories',
+					},
+					{
+						name: 'Update Policy',
+						value: 'updatePolicy',
+						description: 'Update policy settings and rules',
+						action: 'Update a policy',
+					},
+					{
+						name: 'Update Policy Connection Data',
+						value: 'updatePolicyConnectionData',
+						description: 'Update policy integration settings',
+						action: 'Update policy connection data',
 					},
 					{
 						name: 'Update Report Fields',
@@ -229,6 +299,18 @@ export class Expensify implements INodeType {
 						action: 'Add an employee',
 					},
 					{
+						name: 'Create Employee',
+						value: 'createEmployee',
+						description: 'Add new employee to system',
+						action: 'Create employee',
+					},
+					{
+						name: 'Get Employee List',
+						value: 'getEmployeeList',
+						description: 'Get list of employees',
+						action: 'Get employee list',
+					},
+					{
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Get all employees on a policy',
@@ -241,10 +323,22 @@ export class Expensify implements INodeType {
 						action: 'Remove an employee',
 					},
 					{
+						name: 'Set Employee Limit',
+						value: 'setEmployeeLimit',
+						description: 'Set spending limits for employee',
+						action: 'Set employee limit',
+					},
+					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update policy employees via JSON data',
 						action: 'Update employees',
+					},
+					{
+						name: 'Update Employee',
+						value: 'updateEmployee',
+						description: 'Update employee information',
+						action: 'Update employee',
 					},
 				],
 				default: 'getAll',
@@ -374,6 +468,46 @@ export class Expensify implements INodeType {
 				default: 'getAll',
 			},
 
+			// Transaction Operations
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['transaction'],
+					},
+				},
+				options: [
+					{
+						name: 'Export Transaction',
+						value: 'exportTransaction',
+						description: 'Export transaction data for reconciliation',
+						action: 'Export transaction data',
+					},
+					{
+						name: 'Get Transaction List',
+						value: 'getTransactionList',
+						description: 'Get list of transactions with filters',
+						action: 'Get transaction list',
+					},
+					{
+						name: 'Reconcile Transactions',
+						value: 'reconcileTransactions',
+						description: 'Reconcile transactions for accounting',
+						action: 'Reconcile transactions',
+					},
+					{
+						name: 'Update Transaction Status',
+						value: 'updateTransactionStatus',
+						description: 'Update transaction processing status',
+						action: 'Update transaction status',
+					},
+				],
+				default: 'exportTransaction',
+			},
+
 			// ==================== REPORT FIELDS ====================
 			// Export operation fields
 			{
@@ -388,6 +522,30 @@ export class Expensify implements INodeType {
 						operation: ['export'],
 					},
 				},
+			},
+			{
+				displayName: 'Report ID List',
+				name: 'reportIDList',
+				type: 'string',
+				displayOptions: { show: { resource: ['report'], operation: ['downloadReport', 'getReportList'] } },
+				default: '',
+				description: 'Comma-separated list of specific report IDs',
+			},
+			{
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'json',
+				displayOptions: { show: { resource: ['report'], operation: ['downloadReport'] } },
+				default: '{}',
+				description: 'Filter criteria for reports to download',
+			},
+			{
+				displayName: 'Marked as Exported',
+				name: 'markedAsExported',
+				type: 'boolean',
+				displayOptions: { show: { resource: ['report'], operation: ['downloadReport'] } },
+				default: false,
+				description: 'Whether to mark reports as exported after download',
 			},
 			{
 				displayName: 'File Extension',
@@ -480,7 +638,7 @@ export class Expensify implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['report'],
-						operation: ['exportByDateRange'],
+						operation: ['exportByDateRange', 'getReportList'],
 					},
 				},
 			},
@@ -494,9 +652,17 @@ export class Expensify implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['report'],
-						operation: ['exportByDateRange'],
+						operation: ['exportByDateRange', 'getReportList'],
 					},
 				},
+			},
+			{
+				displayName: 'User Email',
+				name: 'userEmail',
+				type: 'string',
+				displayOptions: { show: { resource: ['report'], operation: ['getReportList'] } },
+				default: '',
+				description: 'Email of the user whose reports to retrieve',
 			},
 			{
 				displayName: 'Report States',
@@ -555,9 +721,10 @@ export class Expensify implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['report'],
-						operation: ['exportByStatus'],
+						operation: ['exportByStatus', 'create', 'createReport'],
 					},
 				},
+				required: true,
 			},
 
 			// Download File fields
@@ -594,20 +761,6 @@ export class Expensify implements INodeType {
 
 			// Create Report fields
 			{
-				displayName: 'Employee Email',
-				name: 'employeeEmail',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'Email of the employee to create the report for',
-				displayOptions: {
-					show: {
-						resource: ['report'],
-						operation: ['create'],
-					},
-				},
-			},
-			{
 				displayName: 'Policy ID',
 				name: 'policyId',
 				type: 'string',
@@ -634,6 +787,32 @@ export class Expensify implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Report Name',
+				name: 'reportName',
+				type: 'string',
+				required: true,
+				displayOptions: { show: { resource: ['report'], operation: ['createReport', 'updateReport'] } },
+				default: '',
+				description: 'Name of the report',
+			},
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'json',
+				displayOptions: { show: { resource: ['report'], operation: ['createReport', 'updateReport'] } },
+				default: '{}',
+				description: 'Additional fields for the report',
+			},
+			{
+				displayName: 'Report ID',
+				name: 'reportID',
+				type: 'string',
+				required: true,
+				displayOptions: { show: { resource: ['report'], operation: ['updateReport'] } },
+				default: '',
+				description: 'ID of the report to update',
+			},
 
 			// ==================== EXPENSE FIELDS ====================
 			{
@@ -646,7 +825,7 @@ export class Expensify implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['expense'],
-						operation: ['create', 'createBatch'],
+						operation: ['create', 'createBatch', 'createExpense'],
 					},
 				},
 			},
@@ -660,7 +839,7 @@ export class Expensify implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['expense'],
-						operation: ['create'],
+						operation: ['create', 'createExpense', 'updateExpense'],
 					},
 				},
 			},
@@ -679,6 +858,15 @@ export class Expensify implements INodeType {
 				},
 			},
 			{
+				displayName: 'Date',
+				name: 'date',
+				type: 'dateTime',
+				required: true,
+				displayOptions: { show: { resource: ['expense'], operation: ['createExpense'] } },
+				default: '',
+				description: 'Date of the expense',
+			},
+			{
 				displayName: 'Amount',
 				name: 'amount',
 				type: 'number',
@@ -688,7 +876,7 @@ export class Expensify implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['expense'],
-						operation: ['create'],
+						operation: ['create', 'createExpense', 'updateExpense'],
 					},
 				},
 			},
@@ -701,9 +889,72 @@ export class Expensify implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['expense'],
-						operation: ['create'],
+						operation: ['create', 'createExpense'],
 					},
 				},
+			},
+			{
+				displayName: 'Category',
+				name: 'category',
+				type: 'string',
+				required: true,
+				displayOptions: { show: { resource: ['expense'], operation: ['createExpense', 'updateExpense'] } },
+				default: '',
+				description: 'Expense category',
+			},
+			{
+				displayName: 'Transaction ID',
+				name: 'transactionID',
+				type: 'string',
+				required: true,
+				displayOptions: { show: { resource: ['expense'], operation: ['updateExpense', 'deleteExpense'] } },
+				default: '',
+				description: 'Unique identifier for the expense transaction',
+			},
+			{
+				displayName: 'Comment',
+				name: 'comment',
+				type: 'string',
+				required: false,
+				displayOptions: { show: { resource: ['expense'], operation: ['updateExpense'] } },
+				default: '',
+				description: 'Additional comment for the expense',
+			},
+			{
+				displayName: 'Start Date',
+				name: 'startDate',
+				type: 'dateTime',
+				required: true,
+				displayOptions: { show: { resource: ['expense'], operation: ['getExpenseList'] } },
+				default: '',
+				description: 'Start date for expense list filter',
+			},
+			{
+				displayName: 'End Date',
+				name: 'endDate',
+				type: 'dateTime',
+				required: true,
+				displayOptions: { show: { resource: ['expense'], operation: ['getExpenseList'] } },
+				default: '',
+				description: 'End date for expense list filter',
+			},
+			{
+				displayName: 'User Email',
+				name: 'userEmail',
+				type: 'string',
+				required: false,
+				displayOptions: { show: { resource: ['expense'], operation: ['getExpenseList'] } },
+				default: '',
+				description: 'Filter expenses by user email',
+			},
+			{
+				displayName: 'Report ID List',
+				name: 'reportIDList',
+				type: 'string',
+				required: false,
+				displayOptions: { show: { resource: ['expense'], operation: ['getExpenseList'] } },
+				default: '',
+				description: 'Comma-separated list of report IDs to filter expenses',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -805,7 +1056,7 @@ export class Expensify implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['policy'],
-						operation: ['create'],
+						operation: ['create', 'createPolicy', 'updatePolicy'],
 					},
 				},
 			},
@@ -816,15 +1067,25 @@ export class Expensify implements INodeType {
 				options: [
 					{ name: 'Corporate', value: 'corporate' },
 					{ name: 'Team', value: 'team' },
+					{ name: 'Control', value: 'control' },
 				],
 				default: 'team',
 				description: 'Policy plan type',
 				displayOptions: {
 					show: {
 						resource: ['policy'],
-						operation: ['create'],
+						operation: ['create', 'createPolicy'],
 					},
 				},
+			},
+			{
+				displayName: 'Output Currency',
+				name: 'outputCurrency',
+				type: 'string',
+				required: true,
+				displayOptions: { show: { resource: ['policy'], operation: ['createPolicy'] } },
+				default: 'USD',
+				description: 'Currency code for policy reporting',
 			},
 			{
 				displayName: 'Policy ID List',
@@ -839,6 +1100,46 @@ export class Expensify implements INodeType {
 						operation: ['get'],
 					},
 				},
+			},
+			{
+				displayName: 'Policy ID',
+				name: 'policyID',
+				type: 'string',
+				required: true,
+				displayOptions: { show: { resource: ['policy'], operation: ['updatePolicy', 'getPolicyList', 'updatePolicyConnectionData'] } },
+				default: '',
+				description: 'Unique identifier for the policy',
+			},
+			{
+				displayName: 'Policy ID',
+				name: 'policyId',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'Policy ID to update',
+				displayOptions: {
+					show: {
+						resource: ['policy'],
+						operation: ['updateCategories', 'updateTags', 'updateReportFields'],
+					},
+				},
+			},
+			{
+				displayName: 'Settings',
+				name: 'settings',
+				type: 'json',
+				displayOptions: { show: { resource: ['policy'], operation: ['updatePolicy'] } },
+				default: '{}',
+				description: 'Policy settings and configuration options as JSON object',
+			},
+			{
+				displayName: 'Connection Data',
+				name: 'connectionData',
+				type: 'json',
+				required: true,
+				displayOptions: { show: { resource: ['policy'], operation: ['updatePolicyConnectionData'] } },
+				default: '{}',
+				description: 'Integration connection data as JSON object',
 			},
 			{
 				displayName: 'Fields',
@@ -870,20 +1171,6 @@ export class Expensify implements INodeType {
 					show: {
 						resource: ['policy'],
 						operation: ['get', 'getAll'],
-					},
-				},
-			},
-			{
-				displayName: 'Policy ID',
-				name: 'policyId',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'Policy ID to update',
-				displayOptions: {
-					show: {
-						resource: ['policy'],
-						operation: ['updateCategories', 'updateTags', 'updateReportFields'],
 					},
 				},
 			},
@@ -998,9 +1285,79 @@ export class Expensify implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['employee'],
-						operation: ['add', 'remove'],
+						operation: ['add', 'remove', 'createEmployee', 'updateEmployee', 'getEmployeeList', 'setEmployeeLimit'],
 					},
 				},
+			},
+			{
+				displayName: 'Employee ID',
+				name: 'employeeID',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['employee'],
+						operation: ['createEmployee', 'updateEmployee'],
+					},
+				},
+				default: '',
+				description: 'Unique identifier for the employee',
+			},
+			{
+				displayName: 'Manager Email',
+				name: 'managerEmail',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['employee'],
+						operation: ['createEmployee', 'updateEmployee'],
+					},
+				},
+				default: '',
+				description: 'Email address of the employee manager',
+			},
+			{
+				displayName: 'First Name',
+				name: 'firstName',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['employee'],
+						operation: ['createEmployee', 'updateEmployee'],
+					},
+				},
+				default: '',
+				description: 'First name of the employee',
+			},
+			{
+				displayName: 'Last Name',
+				name: 'lastName',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['employee'],
+						operation: ['createEmployee', 'updateEmployee'],
+					},
+				},
+				default: '',
+				description: 'Last name of the employee',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['employee'],
+						operation: ['setEmployeeLimit'],
+					},
+				},
+				default: 0,
+				description: 'Spending limit amount for the employee',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1208,8 +1565,8 @@ export class Expensify implements INodeType {
 				description: 'Start date for expenses (yyyy-mm-dd)',
 				displayOptions: {
 					show: {
-						resource: ['reconciliation'],
-						operation: ['export', 'exportCardTransactions'],
+						resource: ['reconciliation', 'transaction'],
+						operation: ['export', 'exportCardTransactions', 'exportTransaction', 'getTransactionList'],
 					},
 				},
 			},
@@ -1222,8 +1579,8 @@ export class Expensify implements INodeType {
 				description: 'End date for expenses (yyyy-mm-dd)',
 				displayOptions: {
 					show: {
-						resource: ['reconciliation'],
-						operation: ['export', 'exportCardTransactions'],
+						resource: ['reconciliation', 'transaction'],
+						operation: ['export', 'exportCardTransactions', 'exportTransaction', 'getTransactionList'],
 					},
 				},
 			},
@@ -1306,6 +1663,108 @@ export class Expensify implements INodeType {
 					},
 				},
 			},
+
+			// ==================== TRANSACTION FIELDS ====================
+			{
+				displayName: 'Marked as Exported',
+				name: 'markedAsExported',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['transaction'],
+						operation: ['exportTransaction'],
+					},
+				},
+				default: false,
+				description: 'Whether to mark transactions as exported',
+			},
+			{
+				displayName: 'Transaction ID',
+				name: 'transactionID',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['transaction'],
+						operation: ['updateTransactionStatus'],
+					},
+				},
+				default: '',
+				description: 'ID of the transaction to update',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['transaction'],
+						operation: ['updateTransactionStatus'],
+					},
+				},
+				options: [
+					{
+						name: 'Pending',
+						value: 'pending',
+					},
+					{
+						name: 'Approved',
+						value: 'approved',
+					},
+					{
+						name: 'Rejected',
+						value: 'rejected',
+					},
+					{
+						name: 'Processing',
+						value: 'processing',
+					},
+				],
+				default: 'pending',
+				description: 'New status for the transaction',
+			},
+			{
+				displayName: 'Report ID List',
+				name: 'reportIDList',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['transaction'],
+						operation: ['getTransactionList'],
+					},
+				},
+				default: '',
+				description: 'Comma-separated list of report IDs to filter transactions',
+			},
+			{
+				displayName: 'Transaction List',
+				name: 'transactionList',
+				type: 'json',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['transaction'],
+						operation: ['reconcileTransactions'],
+					},
+				},
+				default: '[]',
+				description: 'Array of transactions to reconcile',
+			},
+			{
+				displayName: 'Reconciliation Data',
+				name: 'reconciliationData',
+				type: 'json',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['transaction'],
+						operation: ['reconcileTransactions'],
+					},
+				},
+				default: '{}',
+				description: 'Reconciliation data and settings',
+			},
 		],
 	};
 
@@ -1323,6 +1782,18 @@ export class Expensify implements INodeType {
 				switch (resource) {
 					case 'report':
 						switch (operation) {
+							case 'downloadReport':
+								result = await executeReportDownload.call(this, i);
+								break;
+							case 'getReportList':
+								result = await executeReportList.call(this, i);
+								break;
+							case 'createReport':
+								result = await executeReportCreate.call(this, i);
+								break;
+							case 'updateReport':
+								result = await executeReportUpdate.call(this, i);
+								break;
 							case 'export':
 								result = await actions.report.exportReports.call(this, i);
 								break;
@@ -1346,6 +1817,18 @@ export class Expensify implements INodeType {
 
 					case 'expense':
 						switch (operation) {
+							case 'createExpense':
+								result = await executeExpenseCreate.call(this, i);
+								break;
+							case 'updateExpense':
+								result = await executeExpenseUpdate.call(this, i);
+								break;
+							case 'deleteExpense':
+								result = await executeExpenseDelete.call(this, i);
+								break;
+							case 'getExpenseList':
+								result = await executeExpenseList.call(this, i);
+								break;
 							case 'create':
 								result = await actions.expense.createExpense.call(this, i);
 								break;
@@ -1357,6 +1840,18 @@ export class Expensify implements INodeType {
 
 					case 'policy':
 						switch (operation) {
+							case 'createPolicy':
+								result = await executePolicyCreate.call(this, i);
+								break;
+							case 'updatePolicy':
+								result = await executePolicyUpdate.call(this, i);
+								break;
+							case 'getPolicyList':
+								result = await executePolicyList.call(this, i);
+								break;
+							case 'updatePolicyConnectionData':
+								result = await executePolicyConnectionUpdate.call(this, i);
+								break;
 							case 'create':
 								result = await actions.policy.createPolicy.call(this, i);
 								break;
@@ -1380,6 +1875,18 @@ export class Expensify implements INodeType {
 
 					case 'employee':
 						switch (operation) {
+							case 'createEmployee':
+								result = await executeEmployeeCreate.call(this, i);
+								break;
+							case 'updateEmployee':
+								result = await executeEmployeeUpdate.call(this, i);
+								break;
+							case 'getEmployeeList':
+								result = await executeEmployeeList.call(this, i);
+								break;
+							case 'setEmployeeLimit':
+								result = await executeEmployeeLimit.call(this, i);
+								break;
 							case 'update':
 								result = await actions.employee.updateEmployees.call(this, i);
 								break;
@@ -1444,14 +1951,31 @@ export class Expensify implements INodeType {
 								break;
 						}
 						break;
+
+					case 'transaction':
+						switch (operation) {
+							case 'exportTransaction':
+								result = await executeTransactionExport.call(this, i);
+								break;
+							case 'getTransactionList':
+								result = await executeTransactionList.call(this, i);
+								break;
+							case 'reconcileTransactions':
+								result = await executeTransactionReconcile.call(this, i);
+								break;
+							case 'updateTransactionStatus':
+								result = await executeTransactionStatusUpdate.call(this, i);
+								break;
+						}
+						break;
 				}
 
 				returnData.push(...result);
-			} catch (error) {
+			} catch (error: any) {
 				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
-							error: (error as Error).message,
+							error: error.message,
 						},
 						pairedItem: { item: i },
 					});
@@ -1464,3 +1988,86 @@ export class Expensify implements INodeType {
 		return [returnData];
 	}
 }
+
+// ============================================================
+// New Operation Handler Functions
+// ============================================================
+
+async function executeReportDownload(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+	const credentials = await this.getCredentials('expensifyApi') as any;
+	const filters = this.getNodeParameter('filters', i) as string;
+	const reportIDList = this.getNodeParameter('reportIDList', i) as string;
+	const markedAsExported = this.getNodeParameter('markedAsExported', i) as boolean;
+
+	const payload = {
+		type: 'download',
+		credentials: {
+			partnerUserID: credentials.partnerUserID,
+			partnerUserSecret: credentials.partnerUserSecret,
+		},
+		filters: typeof filters === 'string' ? JSON.parse(filters) : filters,
+		...(reportIDList && { reportIDList }),
+		...(markedAsExported && { markedAsExported }),
+	};
+
+	const options: any = {
+		method: 'POST',
+		url: credentials.baseUrl || 'https://integrations.expensify.com/Integration-Server/ExpensifyIntegrations',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		form: {
+			requestJobDescription: JSON.stringify(payload),
+		},
+		json: true,
+	};
+
+	const result = await this.helpers.httpRequest(options) as any;
+	return [{ json: result, pairedItem: { item: i } }];
+}
+
+async function executeReportList(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+	const credentials = await this.getCredentials('expensifyApi') as any;
+	const startDate = this.getNodeParameter('startDate', i) as string;
+	const endDate = this.getNodeParameter('endDate', i) as string;
+	const userEmail = this.getNodeParameter('userEmail', i) as string;
+	const reportIDList = this.getNodeParameter('reportIDList', i) as string;
+
+	const payload = {
+		type: 'get',
+		credentials: {
+			partnerUserID: credentials.partnerUserID,
+			partnerUserSecret: credentials.partnerUserSecret,
+		},
+		...(startDate && { startDate }),
+		...(endDate && { endDate }),
+		...(userEmail && { userEmail }),
+		...(reportIDList && { reportIDList }),
+	};
+
+	const options: any = {
+		method: 'POST',
+		url: credentials.baseUrl || 'https://integrations.expensify.com/Integration-Server/ExpensifyIntegrations',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		form: {
+			requestJobDescription: JSON.stringify(payload),
+		},
+		json: true,
+	};
+
+	const result = await this.helpers.httpRequest(options) as any;
+	return [{ json: result, pairedItem: { item: i } }];
+}
+
+async function executeReportCreate(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+	const credentials = await this.getCredentials('expensifyApi') as any;
+	const employeeEmail = this.getNodeParameter('employeeEmail', i) as string;
+	const reportName = this.getNodeParameter('reportName', i) as string;
+	const fields = this.getNodeParameter('fields', i) as string;
+
+	const payload = {
+		type: 'create',
+		credentials: {
+			partner
